@@ -19,7 +19,26 @@ if ( array_shift( $argv ) == '--site' ) {
   file_put_contents( $dir . '/' . $file['filename'] . '.' . $file['extension'], $contents );
   echo message('Getting site: ' . $site, 'WARNING');
 
+  // Get Scripts
+  echo message('Getting JavaScript resources', 'UNKNOWN');
+  foreach ($html->find('script') as $script) {
+    if ($script->src) {
+      // Get script if not cdn
+      if ( !preg_match('/^(http|https|ftp|\/\/)/', $script->src) ) {
+        $scriptPath = pathinfo( $script->src );
+        if ( !file_exists($script->src) ) {
+          if (!file_exists($scriptPath['dirname']))
+            @mkdir($dir . '/' . $scriptPath['dirname'], 0744, true);
+          $sOuts = getFile( $file['dirname'] . '/' . $script->src);
+          file_put_contents( $dir . '/' . $script->src, $sOuts );
+          echo message("\tGet file: " . $script->src, 'SUCCESS');
+        }
+      }
+    }
+  }
+
   // Get all head link resources
+  echo message('Getting CSS resources', 'UNKNOWN');
   foreach ($html->find('link') as $e) {
     $file_ = $e->href;
     if ( !preg_match('/^(http|https|ftp|\/\/)/', $file_) ) {
@@ -30,12 +49,9 @@ if ( array_shift( $argv ) == '--site' ) {
         }
         $contents = getFile($file['dirname'] . '/' . $file_);
         file_put_contents( $dir . '/' . $file_, $contents );
-        echo message("\tDownloaded file: " . $file_, 'SUCCESS');
+        echo message("\tGet file: " . $file_, 'SUCCESS');
         // Get css resources
         if ( $pathinfo['extension'] == 'css' ) {
-          // unminify
-          // $contents = preg_replace( ['/,/', '/;/'], [', ', "; \n"], $contents );
-          // $contents = preg_replace( ['/,/', '/;/'], [', ', "; \n"], $contents );
           foreach (explode(';', $contents) as $r) {
             if ( strstr($r, 'url(') ) {
               foreach (explode('url', $r) as $u) {
@@ -56,31 +72,31 @@ if ( array_shift( $argv ) == '--site' ) {
 
                       $rOuts = getFile($url_);
                       file_put_contents( $dir . '/' . $file_out, $rOuts );
-                      echo message("\t\tDownloaded file: " . $resourceName, 'PROMPT');
+                      echo message("\t\tGet file: " . $resourceName, 'PROMPT');
 
                     }
-                    // get the resource
-                    // file_put_contents( $dir . '/' . $file_out, getFile($file['dirname'] . '/' . $resourceName) );
-                    // echo message("\tDownloaded file: " . $resourceName, 'SUCCESS');
-                    // $resourceContents = getFile($file['dirname'] . '/' . $resourceName);
-                    // file_put_contents( $dir . '/' . $file_, $contents );
                   }
-                  // var_dump( strpos($i, ')') );
-                  // var_dump( substr($i, 0, strpos($i, ")")) );
                 }
               }
             }
           }
-          // preg_match_all('/url\((\'|\")?.*(\'|\")?\;/', $contents, $match);
-          // foreach ($match as $key => $value) {
-          //   var_dump($value);
-          // }
-          // url\((\'|\")?.*(\'|\")?\;
-
-          // echo message("\t\tGetting resources for " . $file_, 'PROMPT');
-          // preg_match_all('/url\((\'|\").*(\'|\")\)/', $contents, $cssResources);
-          // $contents = preg_replace( [',', ';'], [', ', "; \n"], $contents );
         }
+      }
+    }
+  }
+
+  // Get images
+  echo message('Getting images', 'UNKNOWN');
+  foreach ($html->find('img') as $image) {
+    // Get script if not cdn
+    if ( !preg_match('/^(http|https|ftp|\/\/)/', $image->src) ) {
+      $imagePath = pathinfo( $image->src );
+      if ( !file_exists($image->src) ) {
+        if (!file_exists($imagePath['dirname']))
+          @mkdir($dir . '/' . $imagePath['dirname'], 0744, true);
+        $iOuts = getFile( $file['dirname'] . '/' . $image->src);
+        file_put_contents( $dir . '/' . $image->src, $iOuts );
+        echo message("\tGet file: " . $image->src, 'SUCCESS');
       }
     }
   }
