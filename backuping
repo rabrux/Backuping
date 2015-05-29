@@ -51,24 +51,6 @@ if ( array_shift( $argv ) == '--site' ) {
   file_put_contents( $dir . '/' . $file['filename'] . '.' . $file['extension'], $contents );
   echo message('Getting site: ' . $site, 'WARNING');
 
-  // Get Scripts
-  echo message('Getting JavaScript resources', 'UNKNOWN');
-  foreach ($html->find('script') as $script) {
-    if ($script->src) {
-      // Get script if not cdn
-      if ( !preg_match('/^(http|https|ftp|\/\/)/', $script->src) ) {
-        $scriptPath = pathinfo( $script->src );
-        if ( !file_exists($script->src) ) {
-          if (!file_exists($scriptPath['dirname']))
-            @mkdir($dir . '/' . $scriptPath['dirname'], 0744, true);
-          $sOuts = getFile( $file['dirname'] . '/' . $script->src);
-          file_put_contents( $dir . '/' . $script->src, $sOuts );
-          echo message("\tGet file: " . $script->src, 'SUCCESS');
-        }
-      }
-    }
-  }
-
   // Get all head link resources
   echo message('Getting CSS resources', 'UNKNOWN');
   foreach ($html->find('link') as $e) {
@@ -93,6 +75,15 @@ if ( array_shift( $argv ) == '--site' ) {
                     $item = substr( $i[0], 0, strpos( $i[0], ')' ) + 1 );
                     preg_match_all('/\((\"|\')?(.*)(\"|\')?\)/', $item, $match);
                     $resourceName = preg_replace( ['/\'/', '/\"/'], '', $match[2][0] );
+                    // If resource is font
+                    if (strstr($resourceName, 'eot'))
+                      $resourceName = substr( $resourceName, 0, strpos($resourceName, 'eot') + 3 );
+                    if (strstr($resourceName, 'ttf'))
+                      $resourceName = substr( $resourceName, 0, strpos($resourceName, 'ttf') + 3 );
+                    if (strstr($resourceName, 'woff'))
+                      $resourceName = substr( $resourceName, 0, strpos($resourceName, 'woff') + 4 );
+                    if (strstr($resourceName, 'svg'))
+                      $resourceName = substr( $resourceName, 0, strpos($resourceName, 'svg') + 3 );
                     $resourcePath = pathinfo($resourceName);
                     $url_ = $file['dirname'] . '/' . $pathinfo['dirname'] . '/' . $resourceName;
                     $file_out = $pathinfo['dirname'] . '/' . $resourceName;
@@ -112,6 +103,24 @@ if ( array_shift( $argv ) == '--site' ) {
               }
             }
           }
+        }
+      }
+    }
+  }
+
+  // Get Scripts
+  echo message('Getting JavaScript resources', 'UNKNOWN');
+  foreach ($html->find('script') as $script) {
+    if ($script->src) {
+      // Get script if not cdn
+      if ( !preg_match('/^(http|https|ftp|\/\/)/', $script->src) ) {
+        $scriptPath = pathinfo( $script->src );
+        if ( !file_exists($script->src) ) {
+          if (!file_exists($scriptPath['dirname']))
+            @mkdir($dir . '/' . $scriptPath['dirname'], 0744, true);
+          $sOuts = getFile( $file['dirname'] . '/' . $script->src);
+          file_put_contents( $dir . '/' . $script->src, $sOuts );
+          echo message("\tGet file: " . $script->src, 'SUCCESS');
         }
       }
     }
