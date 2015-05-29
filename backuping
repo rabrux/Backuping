@@ -1,0 +1,113 @@
+#!/usr/bin/env php
+<?php
+
+// Get first argv, name of script
+array_shift( $argv );
+
+require_once 'simple_html_dom_node.php';
+
+if ( array_shift( $argv ) == '--site' ) {
+  $dir = 'site';
+  $site = array_shift( $argv );
+  $file = pathinfo( $site );
+  $html = file_get_html( $site );
+  if (!file_exists($dir)) {
+    mkdir($dir);
+  }
+  // Create file
+  $contents = getFile($site);
+  file_put_contents( $dir . '/' . $file['filename'] . '.' . $file['extension'], $contents );
+  echo message('Getting site: ' . $site, 'WARNING');
+
+  // Get all head link resources
+  foreach ($html->find('link') as $e) {
+    $file_ = $e->href;
+    if ( !preg_match('/^(http|https|ftp|\/\/)/', $file_) ) {
+      $pathinfo = pathinfo($file_);
+      if ( !file_exists( $dir . '/' . $file_ ) ) {
+        if ( !file_exists( $dir . '/' . $pathinfo['dirname'] ) ) {
+          @mkdir($dir . '/' . $pathinfo['dirname'], 0744, true);
+        }
+        $contents = getFile($file['dirname'] . '/' . $file_);
+        file_put_contents( $dir . '/' . $file_, $contents );
+        echo message("\tDownloaded file: " . $file_, 'SUCCESS');
+        // Get css resources
+        if ( $pathinfo['extension'] == 'css' ) {
+          // unminify
+          // $contents = preg_replace( ['/,/', '/;/'], [', ', "; \n"], $contents );
+          // $contents = preg_replace( ['/,/', '/;/'], [', ', "; \n"], $contents );
+          foreach (explode(';', $contents) as $r) {
+            if ( strstr($r, 'url(') ) {
+              foreach (explode('url', $r) as $u) {
+                preg_match_all('/\(.*\)/', $u, $l);
+                foreach ($l as $i) {
+                  if ( count($i) > 0 ) {
+                    $item = substr( $i[0], 0, strpos( $i[0], ')' ) + 1 );
+                    preg_match_all('/\((\"|\')?(.*)(\"|\')?\)/', $item, $match);
+                    $resourceName = preg_replace( ['/\'/', '/\"/'], '', $match[2][0] );
+                    $resourcePath = pathinfo($resourceName);
+                    $url_ = $file['dirname'] . '/' . $pathinfo['dirname'] . '/' . $resourceName;
+                    $file_out = $pathinfo['dirname'] . '/' . $resourceName;
+                    $resourceDirectory = $pathinfo['dirname'] . '/' . $resourcePath['dirname'];
+                    if ( !file_exists($dir . '/' . $file_out) ) {
+                      // var_dump($dir . '/' . $file_out);
+                      if ( !file_exists($resourceDirectory) )
+                        @mkdir($dir . '/' . $resourceDirectory, 0744, true);
+
+                      $rOuts = getFile($url_);
+                      file_put_contents( $dir . '/' . $file_out, $rOuts );
+                      echo message("\t\tDownloaded file: " . $resourceName, 'PROMPT');
+
+                    }
+                    // get the resource
+                    // file_put_contents( $dir . '/' . $file_out, getFile($file['dirname'] . '/' . $resourceName) );
+                    // echo message("\tDownloaded file: " . $resourceName, 'SUCCESS');
+                    // $resourceContents = getFile($file['dirname'] . '/' . $resourceName);
+                    // file_put_contents( $dir . '/' . $file_, $contents );
+                  }
+                  // var_dump( strpos($i, ')') );
+                  // var_dump( substr($i, 0, strpos($i, ")")) );
+                }
+              }
+            }
+          }
+          // preg_match_all('/url\((\'|\")?.*(\'|\")?\;/', $contents, $match);
+          // foreach ($match as $key => $value) {
+          //   var_dump($value);
+          // }
+          // url\((\'|\")?.*(\'|\")?\;
+
+          // echo message("\t\tGetting resources for " . $file_, 'PROMPT');
+          // preg_match_all('/url\((\'|\").*(\'|\")\)/', $contents, $cssResources);
+          // $contents = preg_replace( [',', ';'], [', ', "; \n"], $contents );
+        }
+      }
+    }
+  }
+
+}
+
+function getFile($url) {
+  $ch = curl_init();
+
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+  $output = curl_exec($ch);
+
+  curl_close($ch);
+  return $output;
+}
+
+function message($message, $type) {
+  $msgType = json_decode( json_encode( array(
+    'SUCCESS'   => "\033[0;32m",
+    'ERROR'     => "\033[1;31m",
+    'WARNING'   => "\033[0;33m",
+    'UNKNOWN'   => "\033[1;32m",
+    'CONSOLE'   => "\033[0m",
+    'PROMPT'    => "\033[1;34m",
+    'OUT'       => "\033[0;37m"
+  ) ) );
+  return $msgType->$type . $message . $msgType->CONSOLE . "\n";
+}
