@@ -46,9 +46,12 @@ if ( array_shift( $argv ) == '--site' ) {
   if (!file_exists($dir)) {
     mkdir($dir);
   }
+
   // Create file
-  $contents = getFile($site);
-  file_put_contents( $dir . '/' . $file['filename'] . '.' . $file['extension'], $contents );
+  if ( !file_exists($dir . '/' . $file['filename'] . '.' . $file['extension']) ) {
+    $contents = getFile($site);
+    file_put_contents( $dir . '/' . $file['filename'] . '.' . $file['extension'], $contents );
+  }
   echo message('Getting site: ' . $site, 'WARNING');
 
   // Get all head link resources
@@ -78,11 +81,13 @@ if ( array_shift( $argv ) == '--site' ) {
                     // If resource is font
                     if (strstr($resourceName, 'eot'))
                       $resourceName = substr( $resourceName, 0, strpos($resourceName, 'eot') + 3 );
-                    if (strstr($resourceName, 'ttf'))
+                    elseif (strstr($resourceName, 'ttf'))
                       $resourceName = substr( $resourceName, 0, strpos($resourceName, 'ttf') + 3 );
-                    if (strstr($resourceName, 'woff'))
+                    elseif (strstr($resourceName, 'woff2'))
+                      $resourceName = substr( $resourceName, 0, strpos($resourceName, 'woff2') + 5 );
+                    elseif (strstr($resourceName, 'woff'))
                       $resourceName = substr( $resourceName, 0, strpos($resourceName, 'woff') + 4 );
-                    if (strstr($resourceName, 'svg'))
+                    elseif (strstr($resourceName, 'svg'))
                       $resourceName = substr( $resourceName, 0, strpos($resourceName, 'svg') + 3 );
                     $resourcePath = pathinfo($resourceName);
                     $url_ = $file['dirname'] . '/' . $pathinfo['dirname'] . '/' . $resourceName;
@@ -115,7 +120,7 @@ if ( array_shift( $argv ) == '--site' ) {
       // Get script if not cdn
       if ( !preg_match('/^(http|https|ftp|\/\/)/', $script->src) ) {
         $scriptPath = pathinfo( $script->src );
-        if ( !file_exists($script->src) ) {
+        if ( !file_exists($dir . '/' . $script->src) ) {
           if (!file_exists($scriptPath['dirname']))
             @mkdir($dir . '/' . $scriptPath['dirname'], 0744, true);
           $sOuts = getFile( $file['dirname'] . '/' . $script->src);
@@ -132,12 +137,22 @@ if ( array_shift( $argv ) == '--site' ) {
     // Get script if not cdn
     if ( !preg_match('/^(http|https|ftp|\/\/)/', $image->src) ) {
       $imagePath = pathinfo( $image->src );
-      if ( !file_exists($image->src) ) {
+      if ( !file_exists($dir . '/' . $image->src) ) {
         if (!file_exists($imagePath['dirname']))
           @mkdir($dir . '/' . $imagePath['dirname'], 0744, true);
         $iOuts = getFile( $file['dirname'] . '/' . $image->src);
         file_put_contents( $dir . '/' . $image->src, $iOuts );
         echo message("\tGet file: " . $image->src, 'SUCCESS');
+      }
+    }
+  }
+
+  // Get entire site
+  echo message('Getting another route', 'ERROR');
+  foreach ($html->find('a') as $a) {
+    if (pathinfo($a->href)['extension'] == 'html') {
+      if ( !file_exists( $dir . '/' . $a->href ) ) {
+        system('./backuping --site ' . $file['dirname'] . '/' . $a->href);
       }
     }
   }
