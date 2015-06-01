@@ -43,6 +43,11 @@ if ( array_shift( $argv ) == '--site' ) {
   $site = array_shift( $argv );
   $file = pathinfo( $site );
   $html = file_get_html( $site );
+
+  if ( !defined('BASE_URL')) {
+    define('BASE_URL', $file['dirname']);
+  }
+
   if (!file_exists($dir)) {
     mkdir($dir);
   }
@@ -148,10 +153,10 @@ if ( array_shift( $argv ) == '--site' ) {
   }
 
   // Get entire site
-  echo message('Getting another route', 'ERROR');
   foreach ($html->find('a') as $a) {
     if (pathinfo($a->href)['extension'] == 'html') {
       if ( !file_exists( $dir . '/' . $a->href ) ) {
+        echo message('Getting another route', 'ERROR');
         system('./backuping --site ' . $file['dirname'] . '/' . $a->href);
       }
     }
